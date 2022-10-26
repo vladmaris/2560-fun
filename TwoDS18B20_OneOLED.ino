@@ -25,6 +25,8 @@ Adafruit_SSD1306 display(128, 64);  // Create display
 
 float T1C, T2C, T1F, T2F, T1K, T2K;
 
+float *T1Cptr, *T2Cptr, *T1Fptr, *T2Fptr, *T1Kptr, *T2Kptr;
+
 int displayMode;
 int oldDisplayMode;
 int val;
@@ -74,8 +76,14 @@ void setup(void) {
   display.dim(1);  //Set brightness (0 is maximun and 1 is a little dim)
 
   displayMode = 48;
-
   oldDisplayMode = 48;
+
+  T1Cptr = &T1C;
+  T2Cptr = &T2C;
+  T1Fptr = &T1F;
+  T2Fptr = &T2F;
+  T1Kptr = &T1K;
+  T2Kptr = &T2K;
 }
 
 void loop(void) {
@@ -96,15 +104,14 @@ void loop(void) {
 
 void myFirstThread() {
 
-  sensor_inhouse.requestTemperatures();      //get temperatures for first sensor
-  T1C = sensor_inhouse.getTempCByIndex(0);   //get celsius value
-  sensor_outhouse.requestTemperatures();     //get temperatures for second sensor
-  T2C = sensor_outhouse.getTempCByIndex(0);  //get celsius value
+  sensor_inhouse.requestTemperatures();          //get temperatures for first sensor
+  *T1Cptr = sensor_inhouse.getTempCByIndex(0);   //get celsius value
+  sensor_outhouse.requestTemperatures();         //get temperatures for second sensor
+  *T2Cptr = sensor_outhouse.getTempCByIndex(0);  //get celsius value
 
+  initPage(0, 4);
 
-  initPage();
-
-  display.println("pg.0/4");  // Display page count
+  //display.println("pg.0/4");  // Display page count
 
   display.setCursor(30, 3);  // (x,y)
 
@@ -114,45 +121,17 @@ void myFirstThread() {
 
   display.println("In:");  // Text or value to print
 
-  display.setCursor(30, 14);  // (x,y)
+  printTemp1C(30, 14);  // (x,y)
 
-  if (T1C == -127.0) {
-    display.println("Disc");  // Text or value to print
-  } else if (T1C == 85.0) {
-    display.println("Pwr");
-  } else {
-    display.println(T1C);
-  };
-
-  display.setCursor(68, 14);  // (x,y)
-
-  if (T1C == -127.0 || T1C == 85.0) {
-    display.println("");  // Text or value to print
-  } else {
-    display.println("C");
-  };  // Text or value to print}
+  printUnit1C(68, 14);  // (x,y)
 
   display.setCursor(3, 22);  // (x,y)
 
   display.println("Out:");  // Text or value to print
 
-  display.setCursor(30, 22);  // (x,y)
-  if (T2C == -127.0) {
-    display.println("Disc");  // Text or value to print
-  } else if (T2C == 85.0) {
-    display.println("Pwr");
-  } else {
-    display.println(T2C);
-  };
+  printTemp2C(30, 22);  // (x,y)
 
-  display.setCursor(68, 22);  // (x,y)
-
-  if (T2C == -127.0 || T2C == 85.0) {
-      display.println("");  // Text or value to print
-    }
-  else {
-    display.println("C");
-  };  // Text or value to print}
+  printUnit2C(68, 22);  // (x,y)
 
   display.setCursor(3, 30);  // (x,y)
 
@@ -172,20 +151,19 @@ void myFirstThread() {
 
 void mySecondThread() {
   //print sensor data when displayMode equals 1
+  sensor_inhouse.requestTemperatures();         //get temperatures for first sensor
+  *T1Cptr = sensor_inhouse.getTempCByIndex(0);  //get celsius value
+  *T1Fptr = sensor_inhouse.getTempFByIndex(0);  //get fahrenheit value
+  *T1Kptr = *T1Cptr + 273.15;                   //convert celsius to kelvin
 
-  sensor_inhouse.requestTemperatures();     //get temperatures for first sensor
-  T1C = sensor_inhouse.getTempCByIndex(0);  //get celsius value
-  T1F = sensor_inhouse.getTempFByIndex(0);  //get fahrenheit value
-  T1K = T1C + 273.15;                       //convert celsius to kelvin
+  sensor_outhouse.requestTemperatures();         //get temperatures for second sensor
+  *T2Cptr = sensor_outhouse.getTempCByIndex(0);  //get celsius value
+  *T2Fptr = sensor_outhouse.getTempFByIndex(0);  //get fahrenheit value
+  *T2Kptr = *T2Cptr + 273.15;                    //convert celsius to kelvin
 
-  sensor_outhouse.requestTemperatures();     //get temperatures for second sensor
-  T2C = sensor_outhouse.getTempCByIndex(0);  //get celsius value
-  T2F = sensor_outhouse.getTempFByIndex(0);  //get fahrenheit value
-  T2K = T2C + 273.15;                        //convert celsius to kelvin
+  initPage(1, 4);  // (x,y)
 
-  initPage();
-
-  display.println("pg.1/4");  // Display page count
+  //display.println("pg.1/4");  // Display page count
 
   display.setCursor(17, 3);  // (x,y)
 
@@ -197,59 +175,19 @@ void mySecondThread() {
 
   display.println("In:");  // Text or value to print
 
-  display.setCursor(30, 14);  // (x,y)
+  printTemp1C(30, 14);  // (x,y)
 
-  if (T1C == -127.0) {
-    display.println("Disc");  // Text or value to print
-  } else if (T1C == 85.0) {
-    display.println("Pwr");
-  } else {
-    display.println(T1C);
-  };
+  printUnit1C(68, 14);  // (x,y)
 
-  display.setCursor(68, 14);  // (x,y)
+  printTemp1F(30, 22);  // (x,y)
 
-  if (T1C == -127.0 || T1C == 85.0) {
-    display.println("");  // Text or value to print
-  } else {
-    display.println("C");
-  };  // Text or value to print}
+  printUnit1F(68, 22);  // (x,y)
 
-  display.setCursor(30, 22);  // (x,y)
+  printTemp1K(30, 30);  // (x,y)
 
-  if (T1C == -127.0) {
-    display.println("Disc");  // Text or value to print
-  } else if (T1C == 85.0) {
-    display.println("Pwr");
-  } else {
-    display.println(T1F);
-  };
+  printUnit1K(68, 30);  // (x,y)
 
-  display.setCursor(68, 22);  // (x,y)
 
-  if (T1C == -127.0 || T1C == 85.0) {
-    display.println("");  // Text or value to print
-  } else {
-    display.println("F");
-  };  // Text or value to print}
-
-  display.setCursor(30, 30);  // (x,y)
-
-  if (T1C == -127.0) {
-    display.println("Disc");  // Text or value to print
-  } else if (T1C == 85.0) {
-    display.println("Pwr");
-  } else {
-    display.println(T1K);
-  };
-
-  display.setCursor(68, 30);  // (x,y)
-
-  if (T1C == -127.0 || T1C == 85.0) {
-    display.println("");  // Text or value to print
-  } else {
-    display.println("K");
-  };  // Text or value to print}
 
   //second sensor display
 
@@ -257,59 +195,17 @@ void mySecondThread() {
 
   display.println("Out:");  // Text or value to print
 
-  display.setCursor(30, 38);  // (x,y) 4th line
+  printTemp2C(30, 38);  // (x,y)
 
-  if (T2C == -127.0) {
-    display.println("Disc");  // Text or value to print
-  } else if (T2C == 85.0) {
-    display.println("Pwr");
-  } else {
-    display.println(T2C);
-  };
+  printUnit2C(68, 38);  // (x,y) 4th line
 
-  display.setCursor(68, 38);  // (x,y) 4th line
+  printTemp2F(30, 46);  // (x,y)
 
-  if (T2C == -127.0 || T2C == 85.0) {
-    display.println("");  // Text or value to print
-  } else {
-    display.println("C");
-  };  // Text or value to print}
+  printUnit2F(68, 46);  // (x,y) 4th line
 
-  display.setCursor(30, 46);  // (x,y) 4th line
+  printTemp2K(30, 54);  // (x,y)
 
-  if (T2C == -127.0) {
-    display.println("Disc");  // Text or value to print
-  } else if (T2C == 85.0) {
-    display.println("Pwr");
-  } else {
-    display.println(T2F);
-  };
-
-  display.setCursor(68, 46);  // (x,y) 4th line
-
-  if (T2C == -127.0 || T2C == 85.0) {
-    display.println("");  // Text or value to print
-  } else {
-    display.println("F");
-  };  // Text or value to print}
-
-  display.setCursor(30, 54);  // (x,y) 4th line
-
-  if (T2C == -127.0) {
-    display.println("Disc");  // Text or value to print
-  } else if (T2C == 85.0) {
-    display.println("Pwr");
-  } else {
-    display.println(T2K);
-  };
-
-  display.setCursor(68, 54);  // (x,y) 4th line
-
-  if (T2C == -127.0 || T2C == 85.0) {
-    display.println("");  // Text or value to print
-  } else {
-    display.println("K");
-  };  // Text or value to print}
+  printUnit2K(68, 54);  // (x,y) 4th line
 
   display.display();  // Print everything we set previously
 
@@ -318,9 +214,9 @@ void mySecondThread() {
 
 void myThirdThread() {
   //display something when displayMode equals 3
-  initPage();
+  initPage(2, 4);  // (x,y)
 
-  display.println("pg.2/4");  // Display page count
+  //  display.println("pg.2/4");  // Display page count
 
   display.setCursor(13, 3);  // (x,y)
 
@@ -333,9 +229,9 @@ void myThirdThread() {
 
 void myFourthThread() {
   //display time and date when displayMode equals 2
-  initPage();
+  initPage(3, 4);  // (x,y)
 
-  display.println("pg.3/4");  // Display page count
+  // display.println("pg.3/4");  // Display page count
 
   display.setCursor(40, 3);  // (x,y)
 
@@ -364,9 +260,9 @@ void myFourthThread() {
 
 void myFifthThread() {
   //display something when displayMode equals 3
-  initPage();
+  initPage(4, 4);
 
-  display.println("pg.4/4");  // Display page count
+  //display.println("pg.4/4");  // Display page count
 
   display.setCursor(40, 3);  // (x,y)
 
@@ -377,7 +273,7 @@ void myFifthThread() {
   return;
 }
 
-void initPage() {
+void initPage(int a, int b) {
   display.clearDisplay();  // Clear the display so we can refresh
 
   display.drawRect(0, 0, 128, 64, WHITE);  // Draw rectangle (x,y,width,height,color)
@@ -385,6 +281,9 @@ void initPage() {
   display.drawLine(0, 12, 128, 12, WHITE);  // Draw rectangle (x,y,width,height,color)
 
   display.setCursor(89, 54);  // (x,y)
+
+  display.println("pg. a/b");  // Display page count
+  return;
 }
 
 void checkDisplayMode() {
@@ -398,9 +297,149 @@ void checkDisplayMode() {
     oldDisplayMode = displayMode;  //if value is invalid, reset to previous value
     Serial.println(displayMode);   //print the input
   }
+  return;
 }
 
 ISR(TIMER1_COMPA_vect) {  //timer1 interrupt 4Hz toggles reading input from serial monitor
 
   checkDisplayMode();
+  return;
+}
+
+void printTemp1C(int x, int y) {
+  display.setCursor(x, y);  //set cursor at given coordinates
+  if (*T1Cptr == -127.0) {
+    display.println("Disc");  // Text or value to print
+  } else if (*T1Cptr == 85.0) {
+    display.println("Pwr");
+  } else {
+    display.println(*T1Cptr);
+  };
+  return;
+}
+
+void printTemp1F(int x, int y) {
+  display.setCursor(x, y);  //set cursor at given coordinates
+  if (*T1Cptr == -127.0) {
+    display.println("Disc");  // Text or value to print
+  } else if (*T1Cptr == 85.0) {
+    display.println("Pwr");
+  } else {
+    display.println(*T1Fptr);
+  };
+  return;
+}
+
+void printTemp1K(int x, int y) {
+  display.setCursor(x, y);  //set cursor at given coordinates
+  if (*T1Cptr == -127.0) {
+    display.println("Disc");  // Text or value to print
+  } else if (*T1Cptr == 85.0) {
+    display.println("Pwr");
+  } else {
+    display.println(*T1Kptr);
+  };
+  return;
+}
+
+
+void printTemp2C(int x, int y) {
+  display.setCursor(x, y);  //set cursor at given coordinates
+  if (*T2Cptr == -127.0) {
+    display.println("Disc");  // Text or value to print
+  } else if (*T2Cptr == 85.0) {
+    display.println("Pwr");
+  } else {
+    display.println(*T2Cptr);
+  };
+  return;
+}
+
+void printTemp2F(int x, int y) {
+  display.setCursor(x, y);  //set cursor at given coordinates
+  if (*T2Cptr == -127.0) {
+    display.println("Disc");  // Text or value to print
+  } else if (*T2Cptr == 85.0) {
+    display.println("Pwr");
+  } else {
+    display.println(*T2Fptr);
+  };
+  return;
+}
+
+void printTemp2K(int x, int y) {
+  display.setCursor(x, y);  //set cursor at given coordinates
+  if (*T2Cptr == -127.0) {
+    display.println("Disc");  // Text or value to print
+  } else if (*T2Cptr == 85.0) {
+    display.println("Pwr");
+  } else {
+    display.println(*T2Kptr);
+  };
+  return;
+}
+
+
+
+
+void printUnit1C(int x, int y) {
+  display.setCursor(x, y);                     //set cursor at given coordinates
+  if (*T1Cptr == -127.0 || *T1Cptr == 85.0) {  //check if error
+    display.println();                         // Print nothing if error
+  } else {
+    display.println("C");  //Print unit if all good
+  };
+  return;
+}
+
+void printUnit1F(int x, int y) {
+  display.setCursor(x, y);                     //set cursor at given coordinates
+  if (*T1Cptr == -127.0 || *T1Cptr == 85.0) {  //check if error
+    display.println();                         // Print nothing if error
+  } else {
+    display.println("F");  //Print unit if all good
+  };
+  return;
+}
+
+void printUnit1K(int x, int y) {
+  display.setCursor(x, y);                     //set cursor at given coordinates
+  if (*T1Cptr == -127.0 || *T1Cptr == 85.0) {  //check if error
+    display.println();                         // Print nothing if error
+  } else {
+    display.println("K");  //Print unit if all good
+  };
+  return;
+}
+
+
+
+void printUnit2C(int x, int y) {
+  display.setCursor(x, y);                     //set cursor at given coordinates
+  if (*T2Cptr == -127.0 || *T2Cptr == 85.0) {  //check if error
+    display.println();                         // Print nothing if error
+  } else {
+    display.println("C");  //Print unit if all good
+  };
+  return;
+}
+
+void printUnit2F(int x, int y) {
+  display.setCursor(x, y);                     //set cursor at given coordinates
+  if (*T2Cptr == -127.0 || *T2Cptr == 85.0) {  //check if error
+    display.println();                         // Print nothing if error
+  } else {
+    display.println("F");  //Print unit if all good
+  };
+  return;
+}
+
+void printUnit2K(int x, int y) {
+  display.setCursor(x, y);                     //set cursor at given coordinates
+  if (*T2Cptr == -127.0 || *T2Cptr == 85.0) {  //check if error
+    display.println();                         // Print nothing if error
+  } else {
+    display.println("K");  //Print unit if all good
+  };
+  return;
 }
