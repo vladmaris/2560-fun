@@ -3,8 +3,10 @@
 // AUTHOR: Vlad Maris
 // VERSION: 0.2.00
 // PURPOSE: two pins for two sensors demo, with OLED display on I2C
-// DATE: 2022-10-23
+// DATE: 2022-10-30
 //
+
+
 #include <stdio.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -12,8 +14,13 @@
 #include <Adafruit_SSD1306.h>  // Include Adafruit_SSD1306 library to drive the display
 
 
+
+
 #define ONE_WIRE_BUS_1 11
 #define ONE_WIRE_BUS_2 10
+#define hallPin 9
+#define relayPin A0
+#define tempSet 25.0
 
 OneWire oneWire_t1(ONE_WIRE_BUS_1);
 OneWire oneWire_t2(ONE_WIRE_BUS_2);
@@ -30,9 +37,13 @@ float *T1Cptr, *T2Cptr, *T1Fptr, *T2Fptr, *T1Kptr, *T2Kptr;
 short displayMode;
 short oldDisplayMode;
 
+bool isField;
+bool isRelay;
+
+
 void setup(void) {
 
-  //  delay(100);  // This delay is needed to let the display to initialize
+  delay(100);  // This delay is needed to let the display to initialize
 
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // Initialize display with the I2C address of 0x3C
 
@@ -63,6 +74,9 @@ void setup(void) {
 
   Serial.println("Two Sensors, One Display");
 
+  pinMode(relayPin, OUTPUT);  // sets the digital pin A0 as output
+
+  pinMode(hallPin, INPUT);  // sets the digital pin 9 as output
 
   display.setTextColor(WHITE);  // Set color of the text
 
@@ -74,8 +88,8 @@ void setup(void) {
 
   display.dim(1);  //Set brightness (0 is maximun and 1 is a little dim)
 
-  displayMode = 48;
-  oldDisplayMode = 48;
+  displayMode = 49;
+  oldDisplayMode = 49;
 
   T1Cptr = &T1C;
   T2Cptr = &T2C;
@@ -99,22 +113,36 @@ void loop(void) {
     myFifthThread();               // run fifth thread
   } else if (displayMode == 54) {  //if 5
     mySixthThread();               // run sixth thread
+  } else {                         //if none
+    Serial.println("displayMode uninitialised!!");
+    displayMode = 49;  // initialise
+    myFirstThread();   //ensure enter in smt
   }
-}
+}  //end of loop
 
 
 void myFirstThread() {
-
+  //print sensor data when displayMode equals 1
   sensor_inhouse.requestTemperatures();          //get temperatures for first sensor
   *T1Cptr = sensor_inhouse.getTempCByIndex(0);   //get celsius value
   sensor_outhouse.requestTemperatures();         //get temperatures for second sensor
   *T2Cptr = sensor_outhouse.getTempCByIndex(0);  //get celsius value
 
+  if (*T1Cptr < tempSet) {
+    digitalWrite(relayPin, LOW);
+    isRelay = 0;
+  } else {
+    digitalWrite(relayPin, HIGH);
+    isRelay = 1;
+  }
+
+  isField = digitalRead(hallPin);
+
   initPage(1);
 
   //display.println("pg.0/4");  // Display page count
 
-  display.setCursor(30, 3);  // (x,y)
+  display.setCursor(25, 3);  // (x,y)
 
   display.println("Data Overview");  // Text or value to print
 
@@ -146,12 +174,37 @@ void myFirstThread() {
 
   display.println("Alarm1:");  // Text or value to print
 
+  display.setCursor(46, 46);  // (x,y)
+
+  display.println(tempSet);  // Text or value to print
+
+  display.setCursor(3, 54);  // (x,y)
+
+  display.println("Hall:");  // Text or value to print
+
+  display.setCursor(32, 54);  // (x,y)
+
+  display.println(isField);  // Text or value to print
+
+  display.setCursor(80, 46);  // (x,y)
+
+  display.println("Rly:");  // Text or value to print
+
+  display.setCursor(104, 46);  // (x,y)
+
+  if (isRelay == 1) {
+    display.println("ON");
+  } else {
+    display.println("OFF");
+  };
+
   display.display();  // Print everything we set previously
+
   return;
 }
 
 void mySecondThread() {
-  //print sensor data when displayMode equals 1
+  //print sensor data when displayMode equals 2
   sensor_inhouse.requestTemperatures();         //get temperatures for first sensor
   *T1Cptr = sensor_inhouse.getTempCByIndex(0);  //get celsius value
   *T1Fptr = sensor_inhouse.getTempFByIndex(0);  //get fahrenheit value
@@ -214,12 +267,12 @@ void mySecondThread() {
 }
 
 void myThirdThread() {
-  //display something when displayMode equals 2
+  //display something when displayMode equals 3
   initPage(3);  // (x,y)
 
   //  display.println("pg.2/4");  // Display page count
 
-  display.setCursor(13, 3);  // (x,y)
+  display.setCursor(10, 3);  // (x,y)
 
   display.println("Temperature Alarms");  // Text or value to print
 
@@ -229,7 +282,7 @@ void myThirdThread() {
 }
 
 void myFourthThread() {
-  //display time and date when displayMode equals 3
+  //display time and date when displayMode equals 4
   initPage(4);  // (x,y)
 
   // display.println("pg.3/4");  // Display page count
@@ -260,7 +313,7 @@ void myFourthThread() {
 }
 
 void myFifthThread() {
-  //display something when displayMode equals 4
+  //display something when displayMode equals 5
   initPage(5);
 
   //display.println("pg.4/4");  // Display page count
@@ -275,7 +328,8 @@ void myFifthThread() {
 }
 
 void mySixthThread() {
-  //display something when displayMode equals 4
+
+  //display something when displayMode equals 6
   initPage(6);
 
   //display.println("pg.4/4");  // Display page count
@@ -286,10 +340,12 @@ void mySixthThread() {
 
   display.display();  // Print everything we set previously
 
+
   return;
 }
 
 void initPage(short a) {
+
   display.clearDisplay();  // Clear the display so we can refresh
 
   display.drawRect(0, 0, 128, 64, WHITE);  // Draw rectangle (x,y,width,height,color)
@@ -307,7 +363,7 @@ void initPage(short a) {
   display.setCursor(113, 54);  // (x,y)
 
   display.println("/6");  // Display page count
-  
+
   return;
 }
 
