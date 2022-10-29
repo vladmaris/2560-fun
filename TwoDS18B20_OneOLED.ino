@@ -27,9 +27,8 @@ float T1C, T2C, T1F, T2F, T1K, T2K;
 
 float *T1Cptr, *T2Cptr, *T1Fptr, *T2Fptr, *T1Kptr, *T2Kptr;
 
-int displayMode;
-int oldDisplayMode;
-int val;
+short displayMode;
+short oldDisplayMode;
 
 void setup(void) {
 
@@ -88,16 +87,18 @@ void setup(void) {
 
 void loop(void) {
 
-  if (displayMode == 48) {         //if 0 is read
+  if (displayMode == 49) {         //if 0 is read
     myFirstThread();               // run first thread
-  } else if (displayMode == 49) {  //if 1
+  } else if (displayMode == 50) {  //if 1
     mySecondThread();              // run second thread
-  } else if (displayMode == 50) {  // if 2
+  } else if (displayMode == 51) {  //if 2
     myThirdThread();               //run third thread
-  } else if (displayMode == 51) {  //if 3
+  } else if (displayMode == 52) {  //if 3
     myFourthThread();              // run fourth thread
-  } else if (displayMode == 52) {  //if 4
+  } else if (displayMode == 53) {  //if 4
     myFifthThread();               // run fifth thread
+  } else if (displayMode == 54) {  //if 5
+    mySixthThread();               // run sixth thread
   }
 }
 
@@ -109,7 +110,7 @@ void myFirstThread() {
   sensor_outhouse.requestTemperatures();         //get temperatures for second sensor
   *T2Cptr = sensor_outhouse.getTempCByIndex(0);  //get celsius value
 
-  initPage(0, 4);
+  initPage(1);
 
   //display.println("pg.0/4");  // Display page count
 
@@ -161,7 +162,7 @@ void mySecondThread() {
   *T2Fptr = sensor_outhouse.getTempFByIndex(0);  //get fahrenheit value
   *T2Kptr = *T2Cptr + 273.15;                    //convert celsius to kelvin
 
-  initPage(1, 4);  // (x,y)
+  initPage(2);  // (x,y)
 
   //display.println("pg.1/4");  // Display page count
 
@@ -213,8 +214,8 @@ void mySecondThread() {
 }
 
 void myThirdThread() {
-  //display something when displayMode equals 3
-  initPage(2, 4);  // (x,y)
+  //display something when displayMode equals 2
+  initPage(3);  // (x,y)
 
   //  display.println("pg.2/4");  // Display page count
 
@@ -228,8 +229,8 @@ void myThirdThread() {
 }
 
 void myFourthThread() {
-  //display time and date when displayMode equals 2
-  initPage(3, 4);  // (x,y)
+  //display time and date when displayMode equals 3
+  initPage(4);  // (x,y)
 
   // display.println("pg.3/4");  // Display page count
 
@@ -259,8 +260,8 @@ void myFourthThread() {
 }
 
 void myFifthThread() {
-  //display something when displayMode equals 3
-  initPage(4, 4);
+  //display something when displayMode equals 4
+  initPage(5);
 
   //display.println("pg.4/4");  // Display page count
 
@@ -273,7 +274,22 @@ void myFifthThread() {
   return;
 }
 
-void initPage(int a, int b) {
+void mySixthThread() {
+  //display something when displayMode equals 4
+  initPage(6);
+
+  //display.println("pg.4/4");  // Display page count
+
+  display.setCursor(10, 3);  // (x,y)
+
+  display.println("Ambient Light Data");  // Text or value to print
+
+  display.display();  // Print everything we set previously
+
+  return;
+}
+
+void initPage(short a) {
   display.clearDisplay();  // Clear the display so we can refresh
 
   display.drawRect(0, 0, 128, 64, WHITE);  // Draw rectangle (x,y,width,height,color)
@@ -282,7 +298,16 @@ void initPage(int a, int b) {
 
   display.setCursor(89, 54);  // (x,y)
 
-  display.println("pg. a/b");  // Display page count
+  display.println("pg.");  // Display page count
+
+  display.setCursor(107, 54);  // (x,y)
+
+  display.println(a);  // Display page count
+
+  display.setCursor(113, 54);  // (x,y)
+
+  display.println("/6");  // Display page count
+  
   return;
 }
 
@@ -290,7 +315,7 @@ void checkDisplayMode() {
 
   displayMode = Serial.read();  //read input from serial interface
 
-  if (displayMode != 48 && displayMode != 49 && displayMode != 50 && displayMode != 51 && displayMode != 52) {  //check for input value
+  if (displayMode != 49 && displayMode != 50 && displayMode != 51 && displayMode != 52 && displayMode != 53 && displayMode != 54) {  //check for input value
     //Serial.println("Invalid Input!");                                                      //announce invalid input value
     displayMode = oldDisplayMode;  //if value is valid, keep
   } else {
