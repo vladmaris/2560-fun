@@ -1,26 +1,45 @@
 //
 // FILE: TwoDS18B20_OneOLED.ino
 // AUTHOR: Vlad Maris
-// VERSION: 0.2.00
+// VERSION: 0.2.10
 // PURPOSE: two pins for two sensors demo, with OLED display on I2C
 // DATE: 2022-10-30
 //
 
+
+//
+// Sensor shield v5.0 pinout:
+//
+// Pin0 Hall sensor
+// Pin1 burnt ?!
+// Pin2 DS18B20 interior
+// Pin3 DS18B20 exterior
+// Pin4
+// Pin5
+// Pin6
+// Pin7
+// Pin8
+// Pin9
+// Pin10 SDcard CS
+// Pin11 SDcard MOSI
+// Pin12 SDcard MISO
+// Pin13 SDcard SCK
+// PinA0 Relay
+//
 
 #include <stdio.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <Adafruit_GFX.h>      // Include core graphics library for the display
 #include <Adafruit_SSD1306.h>  // Include Adafruit_SSD1306 library to drive the display
+#include <SPI.h>               //used for SDcard interface
+#include <SD.h>
 
-
-
-
-#define ONE_WIRE_BUS_1 11
-#define ONE_WIRE_BUS_2 10
-#define hallPin 9
-#define relayPin A0
-#define tempSet 25.0
+#define ONE_WIRE_BUS_1 2
+#define ONE_WIRE_BUS_2 3
+#define hallPin 0     //assign pin 0 to hall sensor
+#define relayPin A0   // assign pin A0 for relay control
+#define tempSet 25.0  // assign treshold temperature for relay On/Off
 
 OneWire oneWire_t1(ONE_WIRE_BUS_1);
 OneWire oneWire_t2(ONE_WIRE_BUS_2);
@@ -30,16 +49,17 @@ DallasTemperature sensor_outhouse(&oneWire_t2);
 
 Adafruit_SSD1306 display(128, 64);  // Create display
 
-float T1C, T2C, T1F, T2F, T1K, T2K;
+float T1C, T2C, T1F, T2F, T1K, T2K;  // used to store values read from temperature sensors
 
-float *T1Cptr, *T2Cptr, *T1Fptr, *T2Fptr, *T1Kptr, *T2Kptr;
+float *T1Cptr, *T2Cptr, *T1Fptr, *T2Fptr, *T1Kptr, *T2Kptr;  // used to pass the temperature sensors readings
 
-short displayMode;
-short oldDisplayMode;
+short displayMode;     // Used to navigate between active functions
+short oldDisplayMode;  // Used as backup if the new value is not OK
 
-bool isField;
-bool isRelay;
+bool isField;  // used for signaling the presence of a field near Hall sensor
+bool isRelay;  // used for signaling the relay state
 
+File myLogFile;  // the file used to log data on SDcard
 
 void setup(void) {
 
@@ -82,14 +102,14 @@ void setup(void) {
 
   display.setRotation(0);  // Set orientation. Goes from 0, 1, 2 or 3
 
-  display.setTextWrap(false);  // By default, long lines of text are set to automatically ΓÇ£wrapΓÇ¥ back to the leftmost column.
+  display.setTextWrap(false);  // By default, long lines of text are set to automatically wrap back to the leftmost column.
 
   display.setTextSize(0);  // Set text size. We are using a custom font so you should always use the text size of 0
 
   display.dim(1);  //Set brightness (0 is maximun and 1 is a little dim)
 
-  displayMode = 49;
-  oldDisplayMode = 49;
+  displayMode = 49;     // Initialize displaymode with 49==0, the value read from serial monitor; used for navigating between active functions
+  oldDisplayMode = 49;  // Initialize the oldvalue
 
   T1Cptr = &T1C;
   T2Cptr = &T2C;
@@ -99,6 +119,8 @@ void setup(void) {
   T2Kptr = &T2K;
 }
 
+
+// this is the main loop that switches between the defined functions
 void loop(void) {
 
   if (displayMode == 49) {         //if 0 is read
@@ -121,6 +143,7 @@ void loop(void) {
 }  //end of loop
 
 
+// this function reads and displays general sensor readings, RTC, relay
 void myFirstThread() {
   //print sensor data when displayMode equals 1
   sensor_inhouse.requestTemperatures();          //get temperatures for first sensor
@@ -203,6 +226,7 @@ void myFirstThread() {
   return;
 }
 
+// this function reads and displays temperature sensors readings
 void mySecondThread() {
   //print sensor data when displayMode equals 2
   sensor_inhouse.requestTemperatures();         //get temperatures for first sensor
@@ -266,6 +290,7 @@ void mySecondThread() {
   return;
 }
 
+// this function reads and displays temperature alarms
 void myThirdThread() {
   //display something when displayMode equals 3
   initPage(3);  // (x,y)
@@ -281,6 +306,7 @@ void myThirdThread() {
   return;
 }
 
+// this function reads and displays RTC data
 void myFourthThread() {
   //display time and date when displayMode equals 4
   initPage(4);  // (x,y)
@@ -312,6 +338,7 @@ void myFourthThread() {
   return;
 }
 
+// this function reads and displays GSM data
 void myFifthThread() {
   //display something when displayMode equals 5
   initPage(5);
@@ -327,6 +354,8 @@ void myFifthThread() {
   return;
 }
 
+
+// this function reads and displays ambient light sensor readings
 void mySixthThread() {
 
   //display something when displayMode equals 6
@@ -344,6 +373,26 @@ void mySixthThread() {
   return;
 }
 
+
+// this function writes to sd
+void mySeventhThread() {
+
+  //display something when displayMode equals 6
+  initPage(6);
+
+  //display.println("pg.4/4");  // Display page count
+
+  display.setCursor(10, 3);  // (x,y)
+
+  display.println("Ambient Light Data");  // Text or value to print
+
+  display.display();  // Print everything we set previously
+
+
+  return;
+}
+
+// this function draws the frame of the display, frame of the title and current page based on given input
 void initPage(short a) {
 
   display.clearDisplay();  // Clear the display so we can refresh
@@ -367,12 +416,13 @@ void initPage(short a) {
   return;
 }
 
+// this function reads the desired display page, from serial monitor: 49==pg0. 50==pg1... (ascii codes of input symbols)
 void checkDisplayMode() {
 
   displayMode = Serial.read();  //read input from serial interface
 
-  if (displayMode != 49 && displayMode != 50 && displayMode != 51 && displayMode != 52 && displayMode != 53 && displayMode != 54) {  //check for input value
-    //Serial.println("Invalid Input!");                                                      //announce invalid input value
+  if (displayMode != 49 && displayMode != 50 && displayMode != 51 && displayMode != 52 && displayMode != 53 && displayMode != 54) {  //check for valid input value
+    //Serial.println("Invalid Input!");                                                      //announce invalid input value; not used because se mai receptioneaza balarii pe interfata serial
     displayMode = oldDisplayMode;  //if value is valid, keep
   } else {
     oldDisplayMode = displayMode;  //if value is invalid, reset to previous value
@@ -386,6 +436,8 @@ ISR(TIMER1_COMPA_vect) {  //timer1 interrupt 4Hz toggles reading input from seri
   checkDisplayMode();
   return;
 }
+
+// processing data of first temperature sensor
 
 void printTemp1C(int x, int y) {
   display.setCursor(x, y);  //set cursor at given coordinates
@@ -402,9 +454,9 @@ void printTemp1C(int x, int y) {
 void printTemp1F(int x, int y) {
   display.setCursor(x, y);  //set cursor at given coordinates
   if (*T1Cptr == -127.0) {
-    display.println("Disc");  // Text or value to print
+    display.println("Disc");  // Detect if sensor is disconnected
   } else if (*T1Cptr == 85.0) {
-    display.println("Pwr");
+    display.println("Pwr");  // Detect if sensor power is lost
   } else {
     display.println(*T1Fptr);
   };
@@ -414,15 +466,17 @@ void printTemp1F(int x, int y) {
 void printTemp1K(int x, int y) {
   display.setCursor(x, y);  //set cursor at given coordinates
   if (*T1Cptr == -127.0) {
-    display.println("Disc");  // Text or value to print
+    display.println("Disc");  // Detect if sensor is disconnected
   } else if (*T1Cptr == 85.0) {
-    display.println("Pwr");
+    display.println("Pwr");  // Detect if sensor power is lost
   } else {
-    display.println(*T1Kptr);
+    display.println(*T1Kptr);  // Display kelvin sensor 1
   };
   return;
 }
 
+
+// processing data of second temperature sensor
 
 void printTemp2C(int x, int y) {
   display.setCursor(x, y);  //set cursor at given coordinates
@@ -461,7 +515,7 @@ void printTemp2K(int x, int y) {
 }
 
 
-
+// display measurement units for first sensor
 
 void printUnit1C(int x, int y) {
   display.setCursor(x, y);                     //set cursor at given coordinates
@@ -493,7 +547,7 @@ void printUnit1K(int x, int y) {
   return;
 }
 
-
+// display measurement units for second sensor
 
 void printUnit2C(int x, int y) {
   display.setCursor(x, y);                     //set cursor at given coordinates
