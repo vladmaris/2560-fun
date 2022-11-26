@@ -1,7 +1,7 @@
 //
 // FILE: TwoDS18B20_OneOLED.ino
 // AUTHOR: Vlad Maris
-// VERSION: 0.2.10
+// VERSION: 0.2.20
 // PURPOSE: two pins for two sensors demo, with OLED display on I2C
 // DATE: 2022-10-30
 //
@@ -35,11 +35,11 @@
 #include <SPI.h>               //used for SDcard interface
 #include <SD.h>
 
-#define ONE_WIRE_BUS_1 2
-#define ONE_WIRE_BUS_2 3
-#define hallPin 0     //assign pin 0 to hall sensor
-#define relayPin A0   // assign pin A0 for relay control
-#define tempSet 25.0  // assign treshold temperature for relay On/Off
+#define ONE_WIRE_BUS_1 2  // assign pin 2 to interior temperature sensor
+#define ONE_WIRE_BUS_2 3  // assign pin 3 to exterior temperature sensor
+#define hallPin 0         //assign pin 0 to hall sensor
+#define relayPin A0       // assign pin A0 for relay control
+#define tempSet 25.0      // assign treshold temperature for relay On/Off
 
 OneWire oneWire_t1(ONE_WIRE_BUS_1);
 OneWire oneWire_t2(ONE_WIRE_BUS_2);
@@ -90,9 +90,9 @@ void setup(void) {
 
   sensor_outhouse.begin();
 
-  Serial.begin(9600);
+  Serial.begin(9600); // set serial comm baudrate
 
-  Serial.println("Two Sensors, One Display");
+  Serial.println("Two Sensors, One Display"); // Print on serial the title of this program
 
   pinMode(relayPin, OUTPUT);  // sets the digital pin A0 as output
 
@@ -124,27 +124,27 @@ void setup(void) {
 void loop(void) {
 
   if (displayMode == 49) {         //if 0 is read
-    myFirstThread();               // run first thread
+    myFirstPage();               // run first page
   } else if (displayMode == 50) {  //if 1
-    mySecondThread();              // run second thread
+    mySecondPage();              // run second page
   } else if (displayMode == 51) {  //if 2
-    myThirdThread();               //run third thread
+    myThirdPage();               //run third page
   } else if (displayMode == 52) {  //if 3
-    myFourthThread();              // run fourth thread
+    myFourthPage();              // run fourth page
   } else if (displayMode == 53) {  //if 4
-    myFifthThread();               // run fifth thread
+    myFifthPage();               // run fifth page
   } else if (displayMode == 54) {  //if 5
-    mySixthThread();               // run sixth thread
+    mySixthPage();               // run sixth page
   } else {                         //if none
-    Serial.println("displayMode uninitialised!!");
+    Serial.println("displayMode uninitialised!!"); // announce no value for page to be displayed; failsafe mechanism
     displayMode = 49;  // initialise
-    myFirstThread();   //ensure enter in smt
+    myFirstPage();   //ensure enter in something
   }
 }  //end of loop
 
 
 // this function reads and displays general sensor readings, RTC, relay
-void myFirstThread() {
+void myFirstPage() {
   //print sensor data when displayMode equals 1
   sensor_inhouse.requestTemperatures();          //get temperatures for first sensor
   *T1Cptr = sensor_inhouse.getTempCByIndex(0);   //get celsius value
@@ -227,7 +227,7 @@ void myFirstThread() {
 }
 
 // this function reads and displays temperature sensors readings
-void mySecondThread() {
+void mySecondPage() {
   //print sensor data when displayMode equals 2
   sensor_inhouse.requestTemperatures();         //get temperatures for first sensor
   *T1Cptr = sensor_inhouse.getTempCByIndex(0);  //get celsius value
@@ -291,7 +291,7 @@ void mySecondThread() {
 }
 
 // this function reads and displays temperature alarms
-void myThirdThread() {
+void myThirdPage() {
   //display something when displayMode equals 3
   initPage(3);  // (x,y)
 
@@ -307,7 +307,7 @@ void myThirdThread() {
 }
 
 // this function reads and displays RTC data
-void myFourthThread() {
+void myFourthPage() {
   //display time and date when displayMode equals 4
   initPage(4);  // (x,y)
 
@@ -339,7 +339,7 @@ void myFourthThread() {
 }
 
 // this function reads and displays GSM data
-void myFifthThread() {
+void myFifthPage() {
   //display something when displayMode equals 5
   initPage(5);
 
@@ -356,7 +356,7 @@ void myFifthThread() {
 
 
 // this function reads and displays ambient light sensor readings
-void mySixthThread() {
+void mySixthPage() {
 
   //display something when displayMode equals 6
   initPage(6);
@@ -375,7 +375,7 @@ void mySixthThread() {
 
 
 // this function writes to sd
-void mySeventhThread() {
+void mySeventhPage() {
 
   //display something when displayMode equals 6
   initPage(6);
@@ -384,7 +384,7 @@ void mySeventhThread() {
 
   display.setCursor(10, 3);  // (x,y)
 
-  display.println("Ambient Light Data");  // Text or value to print
+  display.println("SD Card Logging Data");  // Text or value to print
 
   display.display();  // Print everything we set previously
 
@@ -440,37 +440,37 @@ ISR(TIMER1_COMPA_vect) {  //timer1 interrupt 4Hz toggles reading input from seri
 // processing data of first temperature sensor
 
 void printTemp1C(int x, int y) {
-  display.setCursor(x, y);  //set cursor at given coordinates
-  if (*T1Cptr == -127.0) {
-    display.println("Disc");  // Text or value to print
-  } else if (*T1Cptr == 85.0) {
-    display.println("Pwr");
+  display.setCursor(x, y);       //set cursor at given coordinates
+  if (*T1Cptr == -127.0) {       // Detect if sensor 1 data line is disconnected
+    display.println("Disc");     // Display sensor is disconnected
+  } else if (*T1Cptr == 85.0) {  // Detect if sensor power is lost
+    display.println("Pwr");      // Display sensor power is lost
   } else {
-    display.println(*T1Cptr);
+    display.println(*T1Cptr);  // Display Celsius reading for sensor 1
   };
   return;
 }
 
 void printTemp1F(int x, int y) {
-  display.setCursor(x, y);  //set cursor at given coordinates
-  if (*T1Cptr == -127.0) {
-    display.println("Disc");  // Detect if sensor is disconnected
-  } else if (*T1Cptr == 85.0) {
-    display.println("Pwr");  // Detect if sensor power is lost
+  display.setCursor(x, y);       //set cursor at given coordinates
+  if (*T1Cptr == -127.0) {       // Detect if sensor 1 data line is disconnected
+    display.println("Disc");     // Display sensor is disconnected
+  } else if (*T1Cptr == 85.0) {  // Detect if sensor power is lost
+    display.println("Pwr");      // Display sensor power is lost
   } else {
-    display.println(*T1Fptr);
+    display.println(*T1Fptr);  // Display Fahrenheit reading for sensor 1
   };
   return;
 }
 
 void printTemp1K(int x, int y) {
-  display.setCursor(x, y);  //set cursor at given coordinates
-  if (*T1Cptr == -127.0) {
-    display.println("Disc");  // Detect if sensor is disconnected
-  } else if (*T1Cptr == 85.0) {
-    display.println("Pwr");  // Detect if sensor power is lost
+  display.setCursor(x, y);       //set cursor at given coordinates
+  if (*T1Cptr == -127.0) {       // Detect if sensor 1 data line is disconnected
+    display.println("Disc");     // Display sensor is disconnected
+  } else if (*T1Cptr == 85.0) {  // Detect if sensor power is lost
+    display.println("Pwr");      // Display sensor power is lost
   } else {
-    display.println(*T1Kptr);  // Display kelvin sensor 1
+    display.println(*T1Kptr);  // Display Kelvin reading for sensor 1
   };
   return;
 }
@@ -479,37 +479,37 @@ void printTemp1K(int x, int y) {
 // processing data of second temperature sensor
 
 void printTemp2C(int x, int y) {
-  display.setCursor(x, y);  //set cursor at given coordinates
-  if (*T2Cptr == -127.0) {
-    display.println("Disc");  // Text or value to print
-  } else if (*T2Cptr == 85.0) {
-    display.println("Pwr");
+  display.setCursor(x, y);       //set cursor at given coordinates
+  if (*T2Cptr == -127.0) {       // Detect if sensor 2 data line is disconnected
+    display.println("Disc");     // Display sensor is disconnected
+  } else if (*T2Cptr == 85.0) {  // Detect if sensor power is lost
+    display.println("Pwr");      // Display sensor power is lost
   } else {
-    display.println(*T2Cptr);
+    display.println(*T2Cptr);  // Display Celsius reading for sensor 2
   };
   return;
 }
 
 void printTemp2F(int x, int y) {
-  display.setCursor(x, y);  //set cursor at given coordinates
-  if (*T2Cptr == -127.0) {
-    display.println("Disc");  // Text or value to print
-  } else if (*T2Cptr == 85.0) {
-    display.println("Pwr");
+  display.setCursor(x, y);       //set cursor at given coordinates
+  if (*T2Cptr == -127.0) {       // Detect if sensor 2 data line is disconnected
+    display.println("Disc");     // Display sensor is disconnected
+  } else if (*T2Cptr == 85.0) {  // Detect if sensor power is lost
+    display.println("Pwr");      // Display sensor power is lost
   } else {
-    display.println(*T2Fptr);
+    display.println(*T2Fptr);  // Display Fahrenheit reading for sensor 2
   };
   return;
 }
 
 void printTemp2K(int x, int y) {
-  display.setCursor(x, y);  //set cursor at given coordinates
-  if (*T2Cptr == -127.0) {
-    display.println("Disc");  // Text or value to print
-  } else if (*T2Cptr == 85.0) {
-    display.println("Pwr");
+  display.setCursor(x, y);       //set cursor at given coordinates
+  if (*T2Cptr == -127.0) {       // Detect if sensor 2 data line is disconnected
+    display.println("Disc");     // Display sensor is disconnected
+  } else if (*T2Cptr == 85.0) {  // Detect if sensor power is lost
+    display.println("Pwr");      // Display sensor power is lost
   } else {
-    display.println(*T2Kptr);
+    display.println(*T2Kptr);  // Display Kelvin reading for sensor 2
   };
   return;
 }
