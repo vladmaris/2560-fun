@@ -1,7 +1,7 @@
 //
 // FILE: TwoDS18B20_OneOLED.ino
 // AUTHOR: Vlad Maris
-// VERSION: 0.2.20
+// VERSION: 0.3.00
 // PURPOSE: two pins for two sensors demo, with OLED display on I2C
 // DATE: 2022-10-30
 //
@@ -32,14 +32,16 @@
 #include <DallasTemperature.h>
 #include <Adafruit_GFX.h>      // Include core graphics library for the display
 #include <Adafruit_SSD1306.h>  // Include Adafruit_SSD1306 library to drive the display
-#include <SPI.h>               //used for SDcard interface
 #include <SD.h>
+#include <SPI.h>  //used for SDcard interface
+
 
 #define ONE_WIRE_BUS_1 2  // assign pin 2 to interior temperature sensor
 #define ONE_WIRE_BUS_2 3  // assign pin 3 to exterior temperature sensor
 #define hallPin 0         //assign pin 0 to hall sensor
 #define relayPin A0       // assign pin A0 for relay control
 #define tempSet 25.0      // assign treshold temperature for relay On/Off
+int pinCS = 10;           //
 
 OneWire oneWire_t1(ONE_WIRE_BUS_1);
 OneWire oneWire_t2(ONE_WIRE_BUS_2);
@@ -59,7 +61,7 @@ short oldDisplayMode;  // Used as backup if the new value is not OK
 bool isField;  // used for signaling the presence of a field near Hall sensor
 bool isRelay;  // used for signaling the relay state
 
-File myLogFile;  // the file used to log data on SDcard
+File myFile;  // the file used to log data on SDcard
 
 void setup(void) {
 
@@ -90,9 +92,9 @@ void setup(void) {
 
   sensor_outhouse.begin();
 
-  Serial.begin(9600); // set serial comm baudrate
+  Serial.begin(9600);  // set serial comm baudrate
 
-  Serial.println("Two Sensors, One Display"); // Print on serial the title of this program
+  Serial.println("Two Sensors, One Display");  // Print on serial the title of this program
 
   pinMode(relayPin, OUTPUT);  // sets the digital pin A0 as output
 
@@ -117,28 +119,40 @@ void setup(void) {
   T2Fptr = &T2F;
   T1Kptr = &T1K;
   T2Kptr = &T2K;
+
+  pinMode(pinCS, OUTPUT);  //set for sdcard interface
+  digitalWrite(10, HIGH);
+
+  // SDcard Initialization
+  if (SD.begin()) {
+    Serial.println("SDcard is ready to use.");
+  } else {
+    Serial.println("SDcard initialization failed");
+    return;
+  }
 }
 
 
-// this is the main loop that switches between the defined functions
+// this is the main loop that switches between the defined functions, as received from serial port treated with interruption
 void loop(void) {
-
-  if (displayMode == 49) {         //if 0 is read
-    myFirstPage();               // run first page
-  } else if (displayMode == 50) {  //if 1
-    mySecondPage();              // run second page
-  } else if (displayMode == 51) {  //if 2
-    myThirdPage();               //run third page
-  } else if (displayMode == 52) {  //if 3
-    myFourthPage();              // run fourth page
-  } else if (displayMode == 53) {  //if 4
-    myFifthPage();               // run fifth page
-  } else if (displayMode == 54) {  //if 5
-    mySixthPage();               // run sixth page
-  } else {                         //if none
-    Serial.println("displayMode uninitialised!!"); // announce no value for page to be displayed; failsafe mechanism
-    displayMode = 49;  // initialise
-    myFirstPage();   //ensure enter in something
+  if (displayMode == 49) {                          //if 1 is read
+    myFirstPage();                                  // run first page
+  } else if (displayMode == 50) {                   //if 2 is read
+    mySecondPage();                                 // run second page
+  } else if (displayMode == 51) {                   //if 3 is read
+    myThirdPage();                                  //run third page
+  } else if (displayMode == 52) {                   //if 4 is read
+    myFourthPage();                                 // run fourth page
+  } else if (displayMode == 53) {                   //if 5 is read
+    myFifthPage();                                  // run fifth page
+  } else if (displayMode == 54) {                   //if 6 is read
+    mySixthPage();                                  // run sixth page
+  } else if (displayMode == 55) {                   //if 7 is read
+    mySeventhPage();                                // run seventh page
+  } else {                                          //if none
+    Serial.println("displayMode uninitialised!!");  // announce no value for page to be displayed; failsafe mechanism
+    displayMode = 49;                               // initialise
+    myFirstPage();                                  //ensure enter in something
   }
 }  //end of loop
 
@@ -159,11 +173,9 @@ void myFirstPage() {
     isRelay = 1;
   }
 
-  isField = digitalRead(hallPin);
+  isField = digitalRead(hallPin);  //read the hall sensor output
 
-  initPage(1);
-
-  //display.println("pg.0/4");  // Display page count
+  initPage(1);  //draw the frame for page 1
 
   display.setCursor(25, 3);  // (x,y)
 
@@ -239,9 +251,7 @@ void mySecondPage() {
   *T2Fptr = sensor_outhouse.getTempFByIndex(0);  //get fahrenheit value
   *T2Kptr = *T2Cptr + 273.15;                    //convert celsius to kelvin
 
-  initPage(2);  // (x,y)
-
-  //display.println("pg.1/4");  // Display page count
+  initPage(2);  //draw the frame for page 2
 
   display.setCursor(17, 3);  // (x,y)
 
@@ -293,9 +303,7 @@ void mySecondPage() {
 // this function reads and displays temperature alarms
 void myThirdPage() {
   //display something when displayMode equals 3
-  initPage(3);  // (x,y)
-
-  //  display.println("pg.2/4");  // Display page count
+  initPage(3);  //draw the frame for page 3
 
   display.setCursor(10, 3);  // (x,y)
 
@@ -309,9 +317,7 @@ void myThirdPage() {
 // this function reads and displays RTC data
 void myFourthPage() {
   //display time and date when displayMode equals 4
-  initPage(4);  // (x,y)
-
-  // display.println("pg.3/4");  // Display page count
+  initPage(4);  //draw the frame for page 4
 
   display.setCursor(40, 3);  // (x,y)
 
@@ -341,9 +347,7 @@ void myFourthPage() {
 // this function reads and displays GSM data
 void myFifthPage() {
   //display something when displayMode equals 5
-  initPage(5);
-
-  //display.println("pg.4/4");  // Display page count
+  initPage(5);  //draw the frame for page 5
 
   display.setCursor(40, 3);  // (x,y)
 
@@ -359,9 +363,7 @@ void myFifthPage() {
 void mySixthPage() {
 
   //display something when displayMode equals 6
-  initPage(6);
-
-  //display.println("pg.4/4");  // Display page count
+  initPage(6);  //draw the frame for page 6
 
   display.setCursor(10, 3);  // (x,y)
 
@@ -377,17 +379,29 @@ void mySixthPage() {
 // this function writes to sd
 void mySeventhPage() {
 
-  //display something when displayMode equals 6
-  initPage(6);
+  sensor_inhouse.requestTemperatures();         //get temperatures for first sensor
+  *T1Cptr = sensor_inhouse.getTempCByIndex(0);  //get celsius value
 
-  //display.println("pg.4/4");  // Display page count
+  //display something when displayMode equals 7
+  initPage(7);  //draw the frame for page 7
 
   display.setCursor(10, 3);  // (x,y)
 
-  display.println("SD Card Logging Data");  // Text or value to print
+  display.println("SDcard Logging");  // Text or value to print
 
   display.display();  // Print everything we set previously
 
+  myFile = SD.open("log.txt", FILE_WRITE);
+  if (myFile) {
+   // myFile.print(sensor_inhouse.getTempCByIndex(0));
+    myFile.print(",");
+    myFile.close();  // close the file
+  }
+  // if the file didn't open, print an error:
+  else {
+    Serial.println("error opening test.txt");
+  }
+  delay(3000);
 
   return;
 }
@@ -413,6 +427,8 @@ void initPage(short a) {
 
   display.println("/6");  // Display page count
 
+  display.display();  // Print everything we set previously; if only frame is displayed, remove this line
+
   return;
 }
 
@@ -421,7 +437,7 @@ void checkDisplayMode() {
 
   displayMode = Serial.read();  //read input from serial interface
 
-  if (displayMode != 49 && displayMode != 50 && displayMode != 51 && displayMode != 52 && displayMode != 53 && displayMode != 54) {  //check for valid input value
+  if (displayMode != 49 && displayMode != 50 && displayMode != 51 && displayMode != 52 && displayMode != 53 && displayMode != 54 && displayMode != 55) {  //check for valid input value
     //Serial.println("Invalid Input!");                                                      //announce invalid input value; not used because se mai receptioneaza balarii pe interfata serial
     displayMode = oldDisplayMode;  //if value is valid, keep
   } else {
@@ -433,7 +449,7 @@ void checkDisplayMode() {
 
 ISR(TIMER1_COMPA_vect) {  //timer1 interrupt 4Hz toggles reading input from serial monitor
 
-  checkDisplayMode();
+  checkDisplayMode();  //when interrupt occurs assign the received value, to displayMode
   return;
 }
 
@@ -538,8 +554,8 @@ void printUnit1F(int x, int y) {
 }
 
 void printUnit1K(int x, int y) {
-  display.setCursor(x, y);                     //set cursor at given coordinates
-  if (*T1Cptr == -127.0 || *T1Cptr == 85.0) {  //check if error
+  display.setCursor(x, y);                     // Set cursor at given coordinates
+  if (*T1Cptr == -127.0 || *T1Cptr == 85.0) {  // Check if error
     display.println();                         // Print nothing if error
   } else {
     display.println("K");  //Print unit if all good
@@ -550,8 +566,8 @@ void printUnit1K(int x, int y) {
 // display measurement units for second sensor
 
 void printUnit2C(int x, int y) {
-  display.setCursor(x, y);                     //set cursor at given coordinates
-  if (*T2Cptr == -127.0 || *T2Cptr == 85.0) {  //check if error
+  display.setCursor(x, y);                     // Set cursor at given coordinates
+  if (*T2Cptr == -127.0 || *T2Cptr == 85.0) {  // Check if error
     display.println();                         // Print nothing if error
   } else {
     display.println("C");  //Print unit if all good
